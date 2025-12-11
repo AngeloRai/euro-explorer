@@ -70,9 +70,32 @@ const quizSchema: Schema = {
   }
 };
 
+// Helper function to retry API calls on 503 errors
+const generateWithRetry = async (params: any, retries = 3): Promise<any> => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (error: any) {
+      const isOverloaded = 
+        error?.status === 503 || 
+        error?.code === 503 || 
+        error?.message?.includes('overloaded') ||
+        (error?.error && error.error.code === 503);
+
+      if (isOverloaded && i < retries - 1) {
+        const delay = Math.pow(2, i) * 1000 + Math.random() * 500; // Exponential backoff + jitter
+        console.warn(`Model overloaded (Attempt ${i + 1}/${retries}). Retrying in ${Math.round(delay)}ms...`);
+        await new Promise(res => setTimeout(res, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+};
+
 export const fetchCountryData = async (countryName: string): Promise<CountryData> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateWithRetry({
       model: "gemini-2.5-flash",
       contents: `Generate a fun, educational flashcard profile for the country "${countryName}". 
       Target audience: 5th grade students. 
@@ -98,7 +121,7 @@ export const fetchCountryData = async (countryName: string): Promise<CountryData
 
 export const fetchQuizQuestions = async (): Promise<QuizQuestion[]> => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await generateWithRetry({
       model: "gemini-2.5-flash",
       contents: `Generate 5 fun and educational multiple-choice quiz questions about European countries.
       Cover topics like capitals, famous food, landmarks, and languages.
