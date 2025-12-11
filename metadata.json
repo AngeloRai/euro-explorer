@@ -1,0 +1,5 @@
+{
+  "name": "EuroExplorer",
+  "description": "An interactive educational map of Europe where students can click on countries to learn fun facts, foods, and landmarks. Powered by Gemini for infinite learning.",
+  "requestFramePermissions": []
+}
